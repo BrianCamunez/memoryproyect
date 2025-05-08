@@ -6,6 +6,7 @@ interface ImageData {
   id: number;
   nombre: string;
   url: string;
+  matched?: boolean;
 }
 
 export default function Home() {
@@ -17,7 +18,12 @@ export default function Home() {
       try {
         const response = await fetch("https://m7uf4laravel-production.up.railway.app/api/targeta");
         const data: ImageData[] = await response.json();
-        setImages(data);
+
+        // Duplicar las imágenes y mezclarlas
+        const duplicatedImages = [...data.slice(0, 9), ...data.slice(0, 9)];
+        const shuffledImages = duplicatedImages.sort(() => Math.random() - 0.5);
+
+        setImages(shuffledImages);
       } catch (error) {
         console.error("Error al obtener las imágenes:", error);
       }
@@ -26,9 +32,31 @@ export default function Home() {
     fetchImages();
   }, []);
 
-  const handleCardClick = (id: number) => {
-    if (!flippedCards.includes(id)) {
-      setFlippedCards([...flippedCards, id]); // Agregar la carta girada al estado
+  const handleCardClick = (index: number) => {
+    if (flippedCards.length < 2 && !flippedCards.includes(index)) {
+      setFlippedCards([...flippedCards, index]);
+    }
+
+    if (flippedCards.length === 1) {
+      const firstCardIndex = flippedCards[0];
+      const secondCardIndex = index;
+
+      if (images[firstCardIndex]?.url === images[secondCardIndex]?.url) {
+        // Si las cartas coinciden, mantenerlas volteadas
+        setFlippedCards([]);
+        setImages((prevImages) =>
+          prevImages.map((img, idx) =>
+            idx === firstCardIndex || idx === secondCardIndex
+              ? { ...img, matched: true }
+              : img
+          )
+        );
+      } else {
+        // Si no coinciden, voltearlas de nuevo después de un breve retraso
+        setTimeout(() => {
+          setFlippedCards([]);
+        }, 1000);
+      }
     }
   };
 
@@ -49,14 +77,14 @@ export default function Home() {
           <div className="w-[1600px] flex items-center justify-center text-center">
             <div className="grid grid-cols-6 gap-6 p-8">
               {images.length > 0 ? (
-                images.slice(0, 18).map((image) => (
+                images.slice(0, 18).map((image, index) => (
                   <div
-                    key={image.id}
+                    key={`${image.id}-${index}`}
                     className="bg-white rounded-2xl shadow-lg overflow-hidden flex items-center justify-center w-[150px] h-[150px] hover:scale-105 transition-transform duration-300 cursor-pointer"
-                    onClick={() => handleCardClick(image.id)}
+                    onClick={() => handleCardClick(index)}
                   >
                     <img
-                      src={flippedCards.includes(image.id) ? image.url : images.find(img => img.id === 27)?.url}
+                      src={flippedCards.includes(index) || image.matched ? image.url : images.find(img => img.id === 27)?.url}
                       alt={image.nombre}
                       className="object-contain w-full h-full"
                     />
